@@ -46,19 +46,18 @@ def main():
                       help='custom pattern selecting file paths to reformat '
                       '(case sensitive, overrides -iregex)')
   parser.add_argument('-iregex', metavar='PATTERN', default=
-                      r'.*\.(cpp|cc|c\+\+|cxx|c|cl|h|hpp|m|mm|inc|js|ts|proto'
-                      r'|protodevel|java)',
+                      r'.*\.(py)',
                       help='custom pattern selecting file paths to reformat '
                       '(case insensitive, overridden by -regex)')
-  parser.add_argument('-sort-includes', action='store_true', default=False,
-                      help='let clang-format sort include blocks')
-  parser.add_argument('-v', '--verbose', action='store_true',
-                      help='be more verbose, ineffective without -i')
   parser.add_argument('-style',
-                      help='formatting style to apply (LLVM, Google, Chromium, '
-                      'Mozilla, WebKit)')
-  parser.add_argument('-binary', default='clang-format',
-                      help='location of binary to use for clang-format')
+                      help='specify formatting style: either a style name (for '
+                      'example "pep8" or "google"), or the name of a file with '
+                      'style settings. The default is pep8 unless a '
+                      '.style.yapf or setup.cfg file located in one of the '
+                      'parent directories of the source file (or current '
+                      'directory for stdin)')
+  parser.add_argument('-binary', default='yapf',
+                      help='location of binary to use for yapf')
   args = parser.parse_args()
 
   # Extract changed lines for each file.
@@ -88,20 +87,17 @@ def main():
         continue
       end_line = start_line + line_count - 1
       lines_by_file.setdefault(filename, []).extend(
-          ['-lines', str(start_line) + ':' + str(end_line)])
+          ['--lines', str(start_line) + '-' + str(end_line)])
 
   # Reformat files containing changes in place.
   for filename, lines in lines_by_file.items():
-    if args.i and args.verbose:
-      print('Formatting {}'.format(filename))
-    command = [args.binary, filename]
+    command = [args.binary]
     if args.i:
       command.append('-i')
-    if args.sort_includes:
-      command.append('-sort-includes')
     command.extend(lines)
     if args.style:
-      command.extend(['-style', args.style])
+      command.extend(['--style', args.style])
+    command.append(filename)
     p = subprocess.Popen(command,
                          stdout=subprocess.PIPE,
                          stderr=None,
